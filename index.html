@@ -9,77 +9,114 @@
 <style>
   :root {
     --bg: var(--tg-theme-bg-color, #ffffff);
-    --text: var(--tg-theme-text-color, #111111);
-    --hint: var(--tg-theme-hint-color, #999999);
+    --text: var(--tg-theme-text-color, #1b1b1b);
+    --hint: var(--tg-theme-hint-color, #9a9a9a);
     --link: var(--tg-theme-link-color, #2481cc);
     --button: var(--tg-theme-button-color, #2481cc);
     --button-text: var(--tg-theme-button-text-color, #ffffff);
-    --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f5);
   }
-  * { box-sizing: border-box; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; padding: 12px 12px 24px;
+    margin: 0; padding: 18px 14px 28px;
     background: var(--bg); color: var(--text);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, sans-serif;
   }
-  h1 { font-size: 18px; text-align: center; margin: 4px 0 12px; text-transform: capitalize; }
-  .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-  .nav button {
-    background: none; border: none; color: var(--link); font-size: 22px; padding: 4px 14px; cursor: pointer;
+
+  /* -- шапка: заголовок + переключение месяца, минимализм в духе Fluent -- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+  .topbar h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
+  .nav-btn {
+    background: none; border: none; color: var(--link); font-size: 22px; line-height: 1;
+    padding: 6px 10px; cursor: pointer; border-radius: 8px;
   }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
-  .dow { text-align: center; font-size: 11px; color: var(--hint); padding-bottom: 4px; }
+  .nav-btn:active { background: var(--secondary-bg); }
+
+  /* -- сетка месяца: без рамок и заливки ячеек, крупные цифры -- */
+  .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
+  .weekdays span {
+    text-align: center; font-size: 11px; font-weight: 600; color: var(--hint);
+    text-transform: uppercase; letter-spacing: 0.4px;
+  }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 14px; }
   .day {
-    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-    border-radius: 8px; font-size: 14px; position: relative; cursor: pointer; background: var(--secondary-bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    cursor: pointer; padding: 4px 0; min-height: 44px; border-radius: 10px;
   }
-  .day.empty { visibility: hidden; }
-  .day.today { outline: 2px solid var(--link); }
-  .day .dot-row { display: flex; gap: 2px; position: absolute; bottom: 5px; }
-  .dot { width: 5px; height: 5px; border-radius: 50%; }
-  .dot.appt { background: #2481cc; }
-  .dot.date { background: #e0982f; }
-  .panel {
-    position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg);
-    border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -4px 24px rgba(0,0,0,.2);
-    transform: translateY(100%); transition: transform .2s ease; max-height: 72vh; overflow-y: auto;
-    z-index: 2;
-  }
-  .panel.open { transform: translateY(0); }
-  .panel h2 { margin: 0 0 8px; font-size: 16px; text-transform: capitalize; }
-  .event { padding: 8px 0; border-bottom: 1px solid var(--secondary-bg); font-size: 14px; }
-  .event .time { color: var(--hint); font-size: 12px; }
-  .empty-hint { color: var(--hint); font-size: 13px; padding: 8px 0; }
-  form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-  input {
-    padding: 10px; border-radius: 8px; border: 1px solid var(--secondary-bg);
-    background: var(--secondary-bg); color: var(--text); font-size: 14px; width: 100%;
-  }
-  button.submit {
-    padding: 10px; border-radius: 8px; border: none; background: var(--button); color: var(--button-text);
-    font-size: 14px; cursor: pointer;
-  }
+  .day.outside { cursor: default; }
+  .day .num { font-size: 19px; font-weight: 700; color: var(--text); line-height: 1.2; }
+  .day.outside .num { color: var(--hint); opacity: 0.5; font-weight: 500; }
+  .day.today .num { color: var(--link); }
+  .day.selected { background: var(--secondary-bg); }
+  .day.selected .num { color: var(--link); }
+  .day .meta { display: flex; align-items: center; gap: 4px; margin-top: 3px; min-height: 12px; }
+  .day .count { font-size: 11px; color: var(--hint); font-weight: 500; }
+  .day.selected .count { color: var(--link); }
+  .shared-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--link); }
+
+  /* -- нижняя панель дня: крупная дата, список без рамок -- */
   .backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none;
+    position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none;
     transition: opacity .2s; z-index: 1;
   }
   .backdrop.open { opacity: 1; pointer-events: auto; }
+  .panel {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg);
+    border-radius: 20px 20px 0 0; padding: 22px 20px 20px; box-shadow: 0 -8px 30px rgba(0,0,0,.18);
+    transform: translateY(100%); transition: transform .22s ease; max-height: 78vh; overflow-y: auto;
+    z-index: 2;
+  }
+  .panel.open { transform: translateY(0); }
+  .panel-weekday { font-size: 14px; color: var(--hint); font-weight: 500; text-transform: capitalize; }
+  .panel-day { font-size: 27px; font-weight: 800; margin-top: 2px; letter-spacing: -0.3px; text-transform: capitalize; }
+
+  .event-row { display: flex; gap: 14px; padding: 12px 0; }
+  .event-time { width: 46px; flex-shrink: 0; color: var(--hint); font-size: 13px; font-weight: 600; padding-top: 2px; }
+  .event-body { flex: 1; min-width: 0; }
+  .event-title { font-size: 15px; font-weight: 600; }
+  .event-place { color: var(--hint); font-weight: 400; }
+  .event-meta { font-size: 12px; color: var(--hint); margin-top: 2px; }
+  .event-meta.shared { color: var(--link); }
+  .empty-hint { color: var(--hint); font-size: 13px; padding: 10px 0 4px; }
+
+  /* -- форма добавления -- */
+  form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--secondary-bg); display: flex; flex-direction: column; gap: 10px; }
+  .scope-toggle { display: flex; gap: 8px; }
+  .scope-btn {
+    flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--secondary-bg);
+    background: transparent; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  .scope-btn.active { background: var(--link); border-color: var(--link); color: var(--button-text); }
+  input {
+    padding: 11px 12px; border-radius: 10px; border: none;
+    background: var(--secondary-bg); color: var(--text); font-size: 14px; width: 100%;
+  }
+  input::placeholder { color: var(--hint); }
+  button.submit {
+    padding: 12px; border-radius: 10px; border: none; background: var(--button); color: var(--button-text);
+    font-size: 15px; font-weight: 600; cursor: pointer;
+  }
 </style>
 </head>
 <body>
-  <div class="nav">
-    <button id="prev" aria-label="Предыдущий месяц">‹</button>
+  <div class="topbar">
+    <button class="nav-btn" id="prev" aria-label="Предыдущий месяц">‹</button>
     <h1 id="title"></h1>
-    <button id="next" aria-label="Следующий месяц">›</button>
+    <button class="nav-btn" id="next" aria-label="Следующий месяц">›</button>
   </div>
-  <div class="grid" id="dow-row"></div>
-  <div class="grid" id="grid" style="margin-top:4px"></div>
+  <div class="weekdays" id="dow-row"></div>
+  <div class="grid" id="grid"></div>
 
   <div class="backdrop" id="backdrop"></div>
   <div class="panel" id="panel">
-    <h2 id="panel-date"></h2>
+    <div class="panel-weekday" id="panel-weekday"></div>
+    <div class="panel-day" id="panel-day"></div>
     <div id="panel-events"></div>
     <form id="add-form">
+      <div class="scope-toggle">
+        <button type="button" class="scope-btn active" data-shared="0">👤 Личное</button>
+        <button type="button" class="scope-btn" data-shared="1">👨‍👩‍👧 Общее</button>
+      </div>
       <input type="text" id="f-title" placeholder="Что за событие?" required maxlength="200">
       <input type="time" id="f-time">
       <input type="text" id="f-place" placeholder="Место (необязательно)" maxlength="300">
@@ -93,6 +130,7 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const DOW = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 const MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const WEEKDAY_FULL = ["понедельник","вторник","среда","четверг","пятница","суббота","воскресенье"];
 
 function b64urlDecode(s) {
   s = s.replace(/-/g, '+').replace(/_/g, '/');
@@ -105,18 +143,19 @@ function parseData() {
   const raw = params.get('d');
   if (!raw) return {};
   try {
-    const json = decodeURIComponent(escape(b64urlDecode(raw)));
-    return JSON.parse(json);
+    return JSON.parse(decodeURIComponent(escape(b64urlDecode(raw))));
   } catch (e) {
     return {};
   }
 }
 
-// events: { "2026-09-14": [{title, time, place, kind}], ... }
+// events: { "2026-09-14": [{title, time, place, kind, shared, owner}], ... }
 const events = parseData();
 
 let current = new Date();
 current.setDate(1);
+let selectedKey = null;
+let sharedChoice = 0;
 
 function dayKey(y, m, d) {
   return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -129,60 +168,109 @@ function escapeHtml(s) {
 function render() {
   const y = current.getFullYear(), m = current.getMonth();
   document.getElementById('title').textContent = `${MONTHS[m]} ${y}`;
-
-  document.getElementById('dow-row').innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+  document.getElementById('dow-row').innerHTML = DOW.map(d => `<span>${d}</span>`).join('');
 
   const grid = document.getElementById('grid');
   grid.innerHTML = '';
   const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // понедельник = 0
   const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const daysInPrevMonth = new Date(y, m, 0).getDate();
   const now = new Date();
   const todayKey = dayKey(now.getFullYear(), now.getMonth(), now.getDate());
 
-  for (let i = 0; i < firstDow; i++) {
-    grid.insertAdjacentHTML('beforeend', '<div class="day empty"></div>');
+  const cells = [];
+  for (let i = firstDow; i > 0; i--) {
+    cells.push({ num: daysInPrevMonth - i + 1, outside: true });
   }
   for (let d = 1; d <= daysInMonth; d++) {
-    const k = dayKey(y, m, d);
-    const dayEvents = events[k] || [];
-    const hasAppt = dayEvents.some(e => e.kind !== 'date');
-    const hasDate = dayEvents.some(e => e.kind === 'date');
+    cells.push({ num: d, outside: false, key: dayKey(y, m, d) });
+  }
+  let nextDay = 1;
+  while (cells.length % 7 !== 0) {
+    cells.push({ num: nextDay++, outside: true });
+  }
+
+  for (const cell of cells) {
+    if (cell.outside) {
+      grid.insertAdjacentHTML('beforeend', `<div class="day outside"><span class="num">${cell.num}</span></div>`);
+      continue;
+    }
+    const dayEvents = events[cell.key] || [];
     const cls = ['day'];
-    if (k === todayKey) cls.push('today');
-    const dots = [];
-    if (hasAppt) dots.push('<span class="dot appt"></span>');
-    if (hasDate) dots.push('<span class="dot date"></span>');
+    if (cell.key === todayKey) cls.push('today');
+    if (cell.key === selectedKey) cls.push('selected');
+    const hasShared = dayEvents.some(e => e.shared);
+    const countHtml = dayEvents.length
+      ? `<span class="count">${dayEvents.length}</span>${hasShared ? '<span class="shared-dot"></span>' : ''}`
+      : '';
     grid.insertAdjacentHTML(
       'beforeend',
-      `<div class="${cls.join(' ')}" data-key="${k}"><span>${d}</span><span class="dot-row">${dots.join('')}</span></div>`
+      `<div class="${cls.join(' ')}" data-key="${cell.key}">
+         <span class="num">${cell.num}</span>
+         <span class="meta">${countHtml}</span>
+       </div>`
     );
   }
 
-  grid.querySelectorAll('.day:not(.empty)').forEach(el => {
+  grid.querySelectorAll('.day:not(.outside)').forEach(el => {
     el.addEventListener('click', () => openDay(el.dataset.key));
   });
 }
 
 function openDay(k) {
+  selectedKey = k;
   document.getElementById('add-form').dataset.key = k;
   const [y, m, d] = k.split('-').map(Number);
-  document.getElementById('panel-date').textContent = `${d} ${MONTHS[m - 1]}`;
+  const weekday = WEEKDAY_FULL[(new Date(y, m - 1, d).getDay() + 6) % 7];
+  document.getElementById('panel-weekday').textContent = weekday;
+  document.getElementById('panel-day').textContent = `${d} ${MONTHS[m - 1]}`;
+
   const list = document.getElementById('panel-events');
   const dayEvents = (events[k] || []).slice().sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   list.innerHTML = dayEvents.length
-    ? dayEvents.map(e => `<div class="event">${e.time ? `<span class="time">${e.time}</span> ` : ''}${escapeHtml(e.title)}${e.place ? ` · ${escapeHtml(e.place)}` : ''}</div>`).join('')
+    ? dayEvents.map(e => {
+        const icon = e.kind === 'date' ? '🎂' : '🗓';
+        const scope = e.shared ? '👨‍👩‍👧 Общее' : '👤 Личное';
+        const owner = e.owner ? ` · от ${escapeHtml(e.owner)}` : '';
+        const place = e.place ? ` <span class="event-place">· ${escapeHtml(e.place)}</span>` : '';
+        return `
+          <div class="event-row">
+            <div class="event-time">${e.time || ''}</div>
+            <div class="event-body">
+              <div class="event-title">${icon} ${escapeHtml(e.title)}${place}</div>
+              <div class="event-meta ${e.shared ? 'shared' : ''}">${scope}${owner}</div>
+            </div>
+          </div>`;
+      }).join('')
     : '<div class="empty-hint">Пока ничего не запланировано</div>';
+
   document.getElementById('f-title').value = '';
   document.getElementById('f-time').value = '';
   document.getElementById('f-place').value = '';
+  setScope(0);
+
   document.getElementById('panel').classList.add('open');
   document.getElementById('backdrop').classList.add('open');
+  render();
 }
 
 function closePanel() {
   document.getElementById('panel').classList.remove('open');
   document.getElementById('backdrop').classList.remove('open');
+  selectedKey = null;
+  render();
 }
+
+function setScope(shared) {
+  sharedChoice = shared;
+  document.querySelectorAll('.scope-btn').forEach(btn => {
+    btn.classList.toggle('active', Number(btn.dataset.shared) === shared);
+  });
+}
+
+document.querySelectorAll('.scope-btn').forEach(btn => {
+  btn.addEventListener('click', () => setScope(Number(btn.dataset.shared)));
+});
 
 document.getElementById('backdrop').addEventListener('click', closePanel);
 document.getElementById('prev').addEventListener('click', () => { current.setMonth(current.getMonth() - 1); render(); });
@@ -195,7 +283,7 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
   const time = document.getElementById('f-time').value || null;
   const place = document.getElementById('f-place').value.trim() || null;
   if (!title) return;
-  const payload = { date: k, title, time, place };
+  const payload = { date: k, title, time, place, shared: sharedChoice };
   if (tg && tg.sendData) {
     tg.sendData(JSON.stringify(payload));
   } else {
