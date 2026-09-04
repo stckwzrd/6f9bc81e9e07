@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="robots" content="noindex, nofollow">
+<title>Календарь</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: var(--tg-theme-bg-color, #ffffff);
+    --text: var(--tg-theme-text-color, #111111);
+    --hint: var(--tg-theme-hint-color, #999999);
+    --link: var(--tg-theme-link-color, #2481cc);
+    --button: var(--tg-theme-button-color, #2481cc);
+    --button-text: var(--tg-theme-button-text-color, #ffffff);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 12px 12px 24px;
+    background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+  h1 { font-size: 18px; text-align: center; margin: 4px 0 12px; text-transform: capitalize; }
+  .nav { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .nav button {
+    background: none; border: none; color: var(--link); font-size: 22px; padding: 4px 14px; cursor: pointer;
+  }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+  .dow { text-align: center; font-size: 11px; color: var(--hint); padding-bottom: 4px; }
+  .day {
+    aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+    border-radius: 8px; font-size: 14px; position: relative; cursor: pointer; background: var(--secondary-bg);
+  }
+  .day.empty { visibility: hidden; }
+  .day.today { outline: 2px solid var(--link); }
+  .day .dot-row { display: flex; gap: 2px; position: absolute; bottom: 5px; }
+  .dot { width: 5px; height: 5px; border-radius: 50%; }
+  .dot.appt { background: #2481cc; }
+  .dot.date { background: #e0982f; }
+  .panel {
+    position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg);
+    border-radius: 16px 16px 0 0; padding: 16px; box-shadow: 0 -4px 24px rgba(0,0,0,.2);
+    transform: translateY(100%); transition: transform .2s ease; max-height: 72vh; overflow-y: auto;
+    z-index: 2;
+  }
+  .panel.open { transform: translateY(0); }
+  .panel h2 { margin: 0 0 8px; font-size: 16px; text-transform: capitalize; }
+  .event { padding: 8px 0; border-bottom: 1px solid var(--secondary-bg); font-size: 14px; }
+  .event .time { color: var(--hint); font-size: 12px; }
+  .empty-hint { color: var(--hint); font-size: 13px; padding: 8px 0; }
+  form { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  input {
+    padding: 10px; border-radius: 8px; border: 1px solid var(--secondary-bg);
+    background: var(--secondary-bg); color: var(--text); font-size: 14px; width: 100%;
+  }
+  button.submit {
+    padding: 10px; border-radius: 8px; border: none; background: var(--button); color: var(--button-text);
+    font-size: 14px; cursor: pointer;
+  }
+  .backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,.4); opacity: 0; pointer-events: none;
+    transition: opacity .2s; z-index: 1;
+  }
+  .backdrop.open { opacity: 1; pointer-events: auto; }
+</style>
+</head>
+<body>
+  <div class="nav">
+    <button id="prev" aria-label="Предыдущий месяц">‹</button>
+    <h1 id="title"></h1>
+    <button id="next" aria-label="Следующий месяц">›</button>
+  </div>
+  <div class="grid" id="dow-row"></div>
+  <div class="grid" id="grid" style="margin-top:4px"></div>
+
+  <div class="backdrop" id="backdrop"></div>
+  <div class="panel" id="panel">
+    <h2 id="panel-date"></h2>
+    <div id="panel-events"></div>
+    <form id="add-form">
+      <input type="text" id="f-title" placeholder="Что за событие?" required maxlength="200">
+      <input type="time" id="f-time">
+      <input type="text" id="f-place" placeholder="Место (необязательно)" maxlength="300">
+      <button type="submit" class="submit">Добавить</button>
+    </form>
+  </div>
+
+<script>
+const tg = window.Telegram && window.Telegram.WebApp;
+if (tg) { tg.ready(); tg.expand(); }
+
+const DOW = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+const MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+
+function b64urlDecode(s) {
+  s = s.replace(/-/g, '+').replace(/_/g, '/');
+  while (s.length % 4) s += '=';
+  return atob(s);
+}
+
+function parseData() {
+  const params = new URLSearchParams(location.search);
+  const raw = params.get('d');
+  if (!raw) return {};
+  try {
+    const json = decodeURIComponent(escape(b64urlDecode(raw)));
+    return JSON.parse(json);
+  } catch (e) {
+    return {};
+  }
+}
+
+// events: { "2026-09-14": [{title, time, place, kind}], ... }
+const events = parseData();
+
+let current = new Date();
+current.setDate(1);
+
+function dayKey(y, m, d) {
+  return `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function render() {
+  const y = current.getFullYear(), m = current.getMonth();
+  document.getElementById('title').textContent = `${MONTHS[m]} ${y}`;
+
+  document.getElementById('dow-row').innerHTML = DOW.map(d => `<div class="dow">${d}</div>`).join('');
+
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // понедельник = 0
+  const daysInMonth = new Date(y, m + 1, 0).getDate();
+  const now = new Date();
+  const todayKey = dayKey(now.getFullYear(), now.getMonth(), now.getDate());
+
+  for (let i = 0; i < firstDow; i++) {
+    grid.insertAdjacentHTML('beforeend', '<div class="day empty"></div>');
+  }
+  for (let d = 1; d <= daysInMonth; d++) {
+    const k = dayKey(y, m, d);
+    const dayEvents = events[k] || [];
+    const hasAppt = dayEvents.some(e => e.kind !== 'date');
+    const hasDate = dayEvents.some(e => e.kind === 'date');
+    const cls = ['day'];
+    if (k === todayKey) cls.push('today');
+    const dots = [];
+    if (hasAppt) dots.push('<span class="dot appt"></span>');
+    if (hasDate) dots.push('<span class="dot date"></span>');
+    grid.insertAdjacentHTML(
+      'beforeend',
+      `<div class="${cls.join(' ')}" data-key="${k}"><span>${d}</span><span class="dot-row">${dots.join('')}</span></div>`
+    );
+  }
+
+  grid.querySelectorAll('.day:not(.empty)').forEach(el => {
+    el.addEventListener('click', () => openDay(el.dataset.key));
+  });
+}
+
+function openDay(k) {
+  document.getElementById('add-form').dataset.key = k;
+  const [y, m, d] = k.split('-').map(Number);
+  document.getElementById('panel-date').textContent = `${d} ${MONTHS[m - 1]}`;
+  const list = document.getElementById('panel-events');
+  const dayEvents = (events[k] || []).slice().sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
+  list.innerHTML = dayEvents.length
+    ? dayEvents.map(e => `<div class="event">${e.time ? `<span class="time">${e.time}</span> ` : ''}${escapeHtml(e.title)}${e.place ? ` · ${escapeHtml(e.place)}` : ''}</div>`).join('')
+    : '<div class="empty-hint">Пока ничего не запланировано</div>';
+  document.getElementById('f-title').value = '';
+  document.getElementById('f-time').value = '';
+  document.getElementById('f-place').value = '';
+  document.getElementById('panel').classList.add('open');
+  document.getElementById('backdrop').classList.add('open');
+}
+
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('backdrop').classList.remove('open');
+}
+
+document.getElementById('backdrop').addEventListener('click', closePanel);
+document.getElementById('prev').addEventListener('click', () => { current.setMonth(current.getMonth() - 1); render(); });
+document.getElementById('next').addEventListener('click', () => { current.setMonth(current.getMonth() + 1); render(); });
+
+document.getElementById('add-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const k = e.target.dataset.key;
+  const title = document.getElementById('f-title').value.trim();
+  const time = document.getElementById('f-time').value || null;
+  const place = document.getElementById('f-place').value.trim() || null;
+  if (!title) return;
+  const payload = { date: k, title, time, place };
+  if (tg && tg.sendData) {
+    tg.sendData(JSON.stringify(payload));
+  } else {
+    alert('Открыто вне Telegram — добавление недоступно.');
+  }
+});
+
+render();
+
+// если сегодня есть события — сразу открыть день, чтобы не искать
+const now = new Date();
+const todayKey = dayKey(now.getFullYear(), now.getMonth(), now.getDate());
+if (events[todayKey]) {
+  openDay(todayKey);
+}
+</script>
+</body>
+</html>
