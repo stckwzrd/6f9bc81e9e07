@@ -9,120 +9,127 @@
 <style>
   :root {
     --bg: var(--tg-theme-bg-color, #ffffff);
-    --text: var(--tg-theme-text-color, #1b1b1b);
-    --hint: var(--tg-theme-hint-color, #9a9a9a);
-    --link: var(--tg-theme-link-color, #2481cc);
-    --button: var(--tg-theme-button-color, #2481cc);
+    --text: var(--tg-theme-text-color, #141414);
+    --hint: var(--tg-theme-hint-color, #97999b);
+    --link: var(--tg-theme-link-color, #e0518f);
+    --button: var(--tg-theme-button-color, #e0518f);
     --button-text: var(--tg-theme-button-text-color, #ffffff);
-    --secondary-bg: var(--tg-theme-secondary-bg-color, #f2f2f5);
+    --secondary-bg: var(--tg-theme-secondary-bg-color, #eef0f2);
   }
   * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
   body {
-    margin: 0; padding: 18px 14px 28px;
+    margin: 0; padding: 16px 16px 28px;
     background: var(--bg); color: var(--text);
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI Variable", "Segoe UI", Roboto, sans-serif;
   }
 
-  /* -- шапка: заголовок + переключение месяца, минимализм в духе Fluent -- */
-  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
-  .topbar h1 { font-size: 19px; font-weight: 600; margin: 0; letter-spacing: -0.2px; }
+  /* -- шапка: значок + хлебная крошка «Календарь › Месяц Год» -- */
+  .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+  .crumb { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--text); min-width: 0; }
+  .crumb .icon { font-size: 16px; opacity: 0.7; flex-shrink: 0; }
+  .crumb .sep { color: var(--hint); }
+  .crumb .month { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .nav { display: flex; gap: 2px; flex-shrink: 0; }
   .nav-btn {
-    background: none; border: none; color: var(--link); font-size: 22px; line-height: 1;
-    padding: 6px 10px; cursor: pointer; border-radius: 8px;
+    background: none; border: none; color: var(--hint); font-size: 20px; line-height: 1;
+    padding: 6px 9px; cursor: pointer; border-radius: 8px;
   }
-  .nav-btn:active { background: var(--secondary-bg); }
+  .nav-btn:active { background: var(--secondary-bg); color: var(--text); }
 
-  /* -- сетка месяца: без рамок и заливки ячеек, крупные цифры -- */
-  .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 6px; }
-  .weekdays span {
-    text-align: center; font-size: 11px; font-weight: 600; color: var(--hint);
-    text-transform: uppercase; letter-spacing: 0.4px;
+  /* -- маленький ряд инструментов, как «+» в референсе -- */
+  .toolbar { display: flex; gap: 4px; margin: 6px 0 16px; }
+  .icon-btn {
+    background: none; border: none; color: var(--hint); font-size: 20px; width: 32px; height: 32px;
+    border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center;
   }
-  .grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 14px; }
-  .day {
-    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
-    cursor: pointer; padding: 4px 0; min-height: 44px; border-radius: 10px;
-  }
-  .day.outside { cursor: default; }
-  .day .num { font-size: 19px; font-weight: 700; color: var(--text); line-height: 1.2; }
-  .day.outside .num { color: var(--hint); opacity: 0.5; font-weight: 500; }
-  .day.today .num { color: var(--link); }
-  .day.selected { background: var(--secondary-bg); }
-  .day.selected .num { color: var(--link); }
-  .day .meta { display: flex; align-items: center; gap: 4px; margin-top: 3px; min-height: 12px; }
-  .day .count { font-size: 11px; color: var(--hint); font-weight: 500; }
-  .day.selected .count { color: var(--link); }
-  .shared-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--link); }
+  .icon-btn:active { background: var(--secondary-bg); }
 
-  /* -- нижняя панель дня: крупная дата, список без рамок -- */
-  .backdrop {
-    position: fixed; inset: 0; background: rgba(0,0,0,.35); opacity: 0; pointer-events: none;
-    transition: opacity .2s; z-index: 1;
-  }
-  .backdrop.open { opacity: 1; pointer-events: auto; }
-  .panel {
-    position: fixed; left: 0; right: 0; bottom: 0; background: var(--bg);
-    border-radius: 20px 20px 0 0; padding: 22px 20px 20px; box-shadow: 0 -8px 30px rgba(0,0,0,.18);
-    transform: translateY(100%); transition: transform .22s ease; max-height: 78vh; overflow-y: auto;
-    z-index: 2;
-  }
-  .panel.open { transform: translateY(0); }
-  .panel-weekday { font-size: 14px; color: var(--hint); font-weight: 500; text-transform: capitalize; }
-  .panel-day { font-size: 27px; font-weight: 800; margin-top: 2px; letter-spacing: -0.3px; text-transform: capitalize; }
+  /* -- карточка дня: светлый блок сверху, как левая панель в референсе -- */
+  .detail-card { background: var(--secondary-bg); border-radius: 16px; padding: 18px 18px 16px; margin-bottom: 18px; }
+  .detail-weekday { font-size: 15px; color: var(--hint); font-weight: 500; text-transform: capitalize; }
+  .detail-day { font-size: 28px; font-weight: 800; margin-top: 1px; letter-spacing: -0.4px; text-transform: capitalize; }
 
-  .event-row { display: flex; gap: 14px; padding: 12px 0; }
-  .event-time { width: 46px; flex-shrink: 0; color: var(--hint); font-size: 13px; font-weight: 600; padding-top: 2px; }
+  .event-row { display: flex; gap: 14px; padding: 11px 0; }
+  .event-row + .event-row { border-top: 1px solid rgba(127,127,127,0.14); }
+  .event-time { width: 44px; flex-shrink: 0; color: var(--hint); font-size: 13px; font-weight: 600; padding-top: 1px; font-variant-numeric: tabular-nums; }
   .event-body { flex: 1; min-width: 0; }
-  .event-title { font-size: 15px; font-weight: 600; }
+  .event-title { font-size: 15px; font-weight: 500; }
   .event-place { color: var(--hint); font-weight: 400; }
-  .event-meta { font-size: 12px; color: var(--hint); margin-top: 2px; }
-  .event-meta.shared { color: var(--link); }
-  .empty-hint { color: var(--hint); font-size: 13px; padding: 10px 0 4px; }
+  .event-meta { font-size: 11.5px; color: var(--link); margin-top: 2px; }
+  .empty-hint { color: var(--hint); font-size: 13px; padding: 4px 0 2px; }
 
-  /* -- форма добавления -- */
-  form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--secondary-bg); display: flex; flex-direction: column; gap: 10px; }
+  /* -- форма добавления: скрыта, пока не нажали «+» -- */
+  #add-section { margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(127,127,127,0.18); display: flex; flex-direction: column; gap: 9px; }
   .scope-toggle { display: flex; gap: 8px; }
   .scope-btn {
-    flex: 1; padding: 10px; border-radius: 10px; border: 1.5px solid var(--secondary-bg);
+    flex: 1; padding: 9px; border-radius: 10px; border: 1.5px solid rgba(127,127,127,0.25);
     background: transparent; color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
   }
   .scope-btn.active { background: var(--link); border-color: var(--link); color: var(--button-text); }
   input {
-    padding: 11px 12px; border-radius: 10px; border: none;
-    background: var(--secondary-bg); color: var(--text); font-size: 14px; width: 100%;
+    padding: 10px 12px; border-radius: 10px; border: none;
+    background: var(--bg); color: var(--text); font-size: 14px; width: 100%;
   }
   input::placeholder { color: var(--hint); }
   button.submit {
-    padding: 12px; border-radius: 10px; border: none; background: var(--button); color: var(--button-text);
-    font-size: 15px; font-weight: 600; cursor: pointer;
+    padding: 11px; border-radius: 10px; border: none; background: var(--button); color: var(--button-text);
+    font-size: 14px; font-weight: 600; cursor: pointer;
   }
+
+  /* -- сетка месяца: без рамок и заливки ячеек, крупные цифры -- */
+  .weekdays { display: grid; grid-template-columns: repeat(7, 1fr); margin-bottom: 8px; }
+  .weekdays span { text-align: center; font-size: 12.5px; color: var(--hint); }
+  .grid { display: grid; grid-template-columns: repeat(7, 1fr); row-gap: 16px; }
+  .day {
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-start;
+    cursor: pointer; padding: 2px 0; min-height: 46px;
+  }
+  .day.outside { cursor: default; }
+  .day .num { font-size: 22px; font-weight: 800; color: var(--text); line-height: 1.15; }
+  .day.outside .num { color: var(--hint); opacity: 0.55; font-weight: 600; }
+  .day.today .num, .day.selected .num { color: var(--link); }
+  .day .count { font-size: 13px; color: var(--link); opacity: 0.55; font-weight: 600; margin-top: 2px; }
+  .day.selected .count { opacity: 1; }
+  .day .count.has-shared { opacity: 0.85; }
 </style>
 </head>
 <body>
   <div class="topbar">
-    <button class="nav-btn" id="prev" aria-label="Предыдущий месяц">‹</button>
-    <h1 id="title"></h1>
-    <button class="nav-btn" id="next" aria-label="Следующий месяц">›</button>
+    <div class="crumb">
+      <span class="icon">📅</span>
+      <span>Календарь</span>
+      <span class="sep">›</span>
+      <span class="month" id="title"></span>
+    </div>
+    <div class="nav">
+      <button class="nav-btn" id="prev" aria-label="Предыдущий месяц">‹</button>
+      <button class="nav-btn" id="next" aria-label="Следующий месяц">›</button>
+    </div>
   </div>
-  <div class="weekdays" id="dow-row"></div>
-  <div class="grid" id="grid"></div>
+  <div class="toolbar">
+    <button class="icon-btn" id="add-toggle" aria-label="Добавить событие">+</button>
+  </div>
 
-  <div class="backdrop" id="backdrop"></div>
-  <div class="panel" id="panel">
-    <div class="panel-weekday" id="panel-weekday"></div>
-    <div class="panel-day" id="panel-day"></div>
+  <div class="detail-card">
+    <div class="detail-weekday" id="panel-weekday"></div>
+    <div class="detail-day" id="panel-day"></div>
     <div id="panel-events"></div>
-    <form id="add-form">
+    <div id="add-section" hidden>
       <div class="scope-toggle">
         <button type="button" class="scope-btn active" data-shared="0">👤 Личное</button>
         <button type="button" class="scope-btn" data-shared="1">👨‍👩‍👧 Общее</button>
       </div>
-      <input type="text" id="f-title" placeholder="Что за событие?" required maxlength="200">
-      <input type="time" id="f-time">
-      <input type="text" id="f-place" placeholder="Место (необязательно)" maxlength="300">
-      <button type="submit" class="submit">Добавить</button>
-    </form>
+      <form id="add-form">
+        <input type="text" id="f-title" placeholder="Что за событие?" required maxlength="200">
+        <input type="time" id="f-time">
+        <input type="text" id="f-place" placeholder="Место (необязательно)" maxlength="300">
+        <button type="submit" class="submit">Добавить</button>
+      </form>
+    </div>
   </div>
+
+  <div class="weekdays" id="dow-row"></div>
+  <div class="grid" id="grid"></div>
 
 <script>
 const tg = window.Telegram && window.Telegram.WebApp;
@@ -130,6 +137,7 @@ if (tg) { tg.ready(); tg.expand(); }
 
 const DOW = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
 const MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const MONTHS_GEN = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
 const WEEKDAY_FULL = ["понедельник","вторник","среда","четверг","пятница","суббота","воскресенье"];
 
 function b64urlDecode(s) {
@@ -165,7 +173,7 @@ function escapeHtml(s) {
   return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-function render() {
+function renderGrid() {
   const y = current.getFullYear(), m = current.getMonth();
   document.getElementById('title').textContent = `${MONTHS[m]} ${y}`;
   document.getElementById('dow-row').innerHTML = DOW.map(d => `<span>${d}</span>`).join('');
@@ -200,14 +208,17 @@ function render() {
     if (cell.key === todayKey) cls.push('today');
     if (cell.key === selectedKey) cls.push('selected');
     const hasShared = dayEvents.some(e => e.shared);
-    const countHtml = dayEvents.length
-      ? `<span class="count">${dayEvents.length}</span>${hasShared ? '<span class="shared-dot"></span>' : ''}`
-      : '';
+    let countHtml = '';
+    if (cell.key === selectedKey && dayEvents.length) {
+      countHtml = `<span class="count">${dayEvents.length} ${plural(dayEvents.length)}</span>`;
+    } else if (dayEvents.length) {
+      countHtml = `<span class="count${hasShared ? ' has-shared' : ''}">${dayEvents.length}</span>`;
+    }
     grid.insertAdjacentHTML(
       'beforeend',
       `<div class="${cls.join(' ')}" data-key="${cell.key}">
          <span class="num">${cell.num}</span>
-         <span class="meta">${countHtml}</span>
+         ${countHtml}
        </div>`
     );
   }
@@ -217,48 +228,48 @@ function render() {
   });
 }
 
+function plural(n) {
+  const mod10 = n % 10, mod100 = n % 100;
+  if (mod10 === 1 && mod100 !== 11) return 'событие';
+  if ([2,3,4].includes(mod10) && ![12,13,14].includes(mod100)) return 'события';
+  return 'событий';
+}
+
 function openDay(k) {
   selectedKey = k;
   document.getElementById('add-form').dataset.key = k;
   const [y, m, d] = k.split('-').map(Number);
   const weekday = WEEKDAY_FULL[(new Date(y, m - 1, d).getDay() + 6) % 7];
   document.getElementById('panel-weekday').textContent = weekday;
-  document.getElementById('panel-day').textContent = `${d} ${MONTHS[m - 1]}`;
+  document.getElementById('panel-day').textContent = `${d} ${MONTHS_GEN[m - 1]}`;
 
   const list = document.getElementById('panel-events');
   const dayEvents = (events[k] || []).slice().sort((a, b) => (a.time || '99:99').localeCompare(b.time || '99:99'));
   list.innerHTML = dayEvents.length
     ? dayEvents.map(e => {
-        const icon = e.kind === 'date' ? '🎂' : '🗓';
-        const scope = e.shared ? '👨‍👩‍👧 Общее' : '👤 Личное';
-        const owner = e.owner ? ` · от ${escapeHtml(e.owner)}` : '';
+        const icon = e.kind === 'date' ? '🎂 ' : '';
+        const scope = e.shared ? '👨‍👩‍👧 Общее' : '';
+        const owner = e.owner ? `${e.shared ? ' · ' : ''}от ${escapeHtml(e.owner)}` : '';
+        const meta = scope || owner ? `<div class="event-meta">${scope}${owner}</div>` : '';
         const place = e.place ? ` <span class="event-place">· ${escapeHtml(e.place)}</span>` : '';
         return `
           <div class="event-row">
             <div class="event-time">${e.time || ''}</div>
             <div class="event-body">
-              <div class="event-title">${icon} ${escapeHtml(e.title)}${place}</div>
-              <div class="event-meta ${e.shared ? 'shared' : ''}">${scope}${owner}</div>
+              <div class="event-title">${icon}${escapeHtml(e.title)}${place}</div>
+              ${meta}
             </div>
           </div>`;
       }).join('')
     : '<div class="empty-hint">Пока ничего не запланировано</div>';
 
+  document.getElementById('add-section').hidden = true;
   document.getElementById('f-title').value = '';
   document.getElementById('f-time').value = '';
   document.getElementById('f-place').value = '';
   setScope(0);
 
-  document.getElementById('panel').classList.add('open');
-  document.getElementById('backdrop').classList.add('open');
-  render();
-}
-
-function closePanel() {
-  document.getElementById('panel').classList.remove('open');
-  document.getElementById('backdrop').classList.remove('open');
-  selectedKey = null;
-  render();
+  renderGrid();
 }
 
 function setScope(shared) {
@@ -272,9 +283,14 @@ document.querySelectorAll('.scope-btn').forEach(btn => {
   btn.addEventListener('click', () => setScope(Number(btn.dataset.shared)));
 });
 
-document.getElementById('backdrop').addEventListener('click', closePanel);
-document.getElementById('prev').addEventListener('click', () => { current.setMonth(current.getMonth() - 1); render(); });
-document.getElementById('next').addEventListener('click', () => { current.setMonth(current.getMonth() + 1); render(); });
+document.getElementById('add-toggle').addEventListener('click', () => {
+  const section = document.getElementById('add-section');
+  section.hidden = !section.hidden;
+  if (!section.hidden) document.getElementById('f-title').focus();
+});
+
+document.getElementById('prev').addEventListener('click', () => { current.setMonth(current.getMonth() - 1); renderGrid(); });
+document.getElementById('next').addEventListener('click', () => { current.setMonth(current.getMonth() + 1); renderGrid(); });
 
 document.getElementById('add-form').addEventListener('submit', (e) => {
   e.preventDefault();
@@ -291,14 +307,9 @@ document.getElementById('add-form').addEventListener('submit', (e) => {
   }
 });
 
-render();
-
-// если сегодня есть события — сразу открыть день, чтобы не искать
+// открываем сегодняшний день сразу, чтобы карточка сверху не пустовала
 const now = new Date();
-const todayKey = dayKey(now.getFullYear(), now.getMonth(), now.getDate());
-if (events[todayKey]) {
-  openDay(todayKey);
-}
+openDay(dayKey(now.getFullYear(), now.getMonth(), now.getDate()));
 </script>
 </body>
 </html>
